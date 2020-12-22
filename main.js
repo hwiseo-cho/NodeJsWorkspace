@@ -2,7 +2,7 @@ var http = require('http');
 var fs = require('fs');
 var url = require('url');
 var qs = require('querystring');
-
+// refactoring 중복 제거
 var template = {
     html : function (title, list, body, controll) {
         return `
