@@ -2,12 +2,13 @@ const express = require('express');
 const app = express();
 const port = 3000
 var fs = require('fs');
-var template = require('./lib/template.js');
-var sanitizeHtml = require('sanitize-html');
 var qs = require('querystring');
-var path = require('path');
 var bodyParser = require('body-parser');
 var compression = require('compression');
+var topicRouter = require('./routes/topic.js');
+var indexRouter = require('./routes/index.js');
+var helmet = require('helmet');
+app.use(helmet());
 // const == 상수: 변하지 않는 값 (자바에서 final)
 
 // 정적인 파일 접근
@@ -24,140 +25,9 @@ app.get('*', function(request, response, next){
   });
 });
 
-// route, routing
-app.get('/', (request, response) => {
-    var title = 'Welcome';
-    var description = 'Hello, Node.js';
-    var list = template.list(request.list);
-    var html = template.HTML(title, list,
-      `<h2>${title}</h2>${description}
-      <img src="/images/hello.jpg" style="width:300px; display:block; margin-top:10px;">
-      `,
-      `<a href="/topic/create">create</a>`
-    );
-    response.send(html);
-});
+app.use('/topic', topicRouter);
+app.use('/', indexRouter);
 
-app.get("/topic/create", (request,response) => {
-  var title = 'WEB - create';
-  var list = template.list(request.list);
-  var html = template.HTML(title, list, `
-    <form action="/topic/create_process" method="post">
-    <p><input type="text" name="title" placeholder="title"></p>
-    <p>
-      <textarea name="description" placeholder="description"></textarea>
-    </p>
-    <p>
-      <input type="submit">
-    </p>
-    </form>
-    `, '');
-  response.send(html);
-});
-
-app.post('/topic/create_process', function(request,response){
-  /*var body = '';
-  request.on('data', function(data){
-      body = body + data;
-  });
-  request.on('end', function(){
-      var post = qs.parse(body);
-      var title = post.title;
-      var description = post.description;
-      var sanitizedTitle = sanitizeHtml(title);
-      var sanitizedDescription = sanitizeHtml(description);
-      fs.writeFile(`data/${sanitizedTitle}`, sanitizedDescription, 'utf8', function(err){
-        response.writeHead(302, {Location: `/page/${title}`});
-        response.end();
-      })
-  });*/
-  
-  var post = request.body;
-  var title = post.title;
-  var description = post.description;
-  var sanitizedTitle = sanitizeHtml(title);
-  var sanitizedDescription = sanitizeHtml(description);
-  fs.writeFile(`data/${sanitizedTitle}`, sanitizedDescription, 'utf8', function(err){
-    response.redirect(`/topic/${title}`);
-  })
-});
-
-app.get(`/topic/update/:pageId`, (request,response) =>{
-  var filteredId = path.parse(request.params.pageId).base;
-  fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
-      var title = request.params.pageId;
-      var list = template.list(request.list);
-      var html = template.HTML(title, list,
-      `
-      <form action="/topic/update_process" method="post">
-        <input type="hidden" name="id" value="${title}">
-        <p><input type="text" name="title" placeholder="title" value="${title}"></p>
-        <p>
-          <textarea name="description" placeholder="description">${description}</textarea>
-        </p>
-        <p>
-          <input type="submit">
-        </p>
-      </form>
-      `,
-      `<a href="/topic/create">create</a> <a href="/update?id=${title}">update</a>`
-    );
-    response.send(html);
-    });
-}); 
-
-app.post('/topic/update_process', (request,response) => {
-    var post = request.body;
-    var id = post.id;
-    var title = post.title;
-    var description = post.description;
-    fs.rename(`data/${id}`, `data/${title}`, function(error){
-      fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-          response.redirect(`/topic/${title}`);
-      });
-    });
-});
-
-app.post('/topic/delete_process', (request,response) => {
-  var post = request.body;
-  var id = post.id;
-  var filteredId = path.parse(id).base;
-  fs.unlink(`data/${filteredId}`, function(error){
-    response.redirect('/')
-  });
-});
-
-app.get('/topic/:pageId', (request, response, next) => {
-  console.log(request.list);
-    var filteredId = path.parse(request.params.pageId).base;
-    fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
-      if(err) {
-        next(err);
-      } else {
-        var title = request.params.pageId;
-        var sanitizedTitle = sanitizeHtml(title);
-        var sanitizedDescription = sanitizeHtml(description);
-        var list = template.list(request.list);
-        var html = template.HTML(sanitizedTitle, list,
-          `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
-          ` <a href="/topic/create">create</a>
-            <a href="/topic/update/${sanitizedTitle}">update</a>
-            <form action="/topic/delete_process" method="post">
-              <input type="hidden" name="id" value="${sanitizedTitle}">
-              <input type="submit" value="delete">
-            </form>`
-        );
-      response.send(html);
-      }
-    });
-});
-
-
-/*
-  app.get('/', function(req, res) {
-      res.send('Hello World!');
-  });
-*/ 
 // 미들웨어는 순차적으로 실행하기 때문에 404는 마지막에 
 // 404 
 app.use(function(req, res, next) {
@@ -172,6 +42,16 @@ app.use(function(err, req, res, next) {
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);
 })
+
+
+
+
+
+
+
+
+
+
 
 
 
